@@ -16,13 +16,13 @@ const nodes = [
 ]
 
 const edges = [
-  { source: "cdn",    target: "api" },
-  { source: "api",    target: "auth" },
+  { source: "cdn",    target: "api",     label: "HTTP" },
+  { source: "api",    target: "auth",    label: "JWT" },
   { source: "api",    target: "db" },
-  { source: "api",    target: "cache" },
+  { source: "api",    target: "cache",   label: "get/set" },
   { source: "auth",   target: "db" },
-  { source: "api",    target: "queue" },
-  { source: "queue",  target: "worker" },
+  { source: "api",    target: "queue",   label: "publish" },
+  { source: "queue",  target: "worker",  label: "consume" },
   { source: "worker", target: "db" },
   { source: "worker", target: "storage" },
   { source: "worker", target: "notify" },

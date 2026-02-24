@@ -29,6 +29,7 @@ import {
   getNodeExitPoint,
   getEdgeKey,
   type SimNode,
+  type SimulationConfig,
 } from "@/components/ui/network-graph-simulation"
 
 // ─── Public types ──────────────────────────────────────────────────────────────
@@ -39,13 +40,19 @@ export interface NetworkGraphNode {
   subtitle?: string
   /** Emoji or short string rendered in the icon slot */
   icon?: string
+  /** Initial x position. If omitted, randomized by simulation. */
+  x?: number
+  /** Initial y position. If omitted, randomized by simulation. */
+  y?: number
+  /** When true, simulation will not move this node. Default: false */
+  fixed?: boolean
 }
 
 export interface NetworkGraphEdge {
   source: string
   target: string
-  /** Reserved for v2 — edge label rendering */
-  // label?: string
+  /** Optional label displayed at the edge midpoint */
+  label?: string
 }
 
 // ─── Internal constants ────────────────────────────────────────────────────────
@@ -66,7 +73,7 @@ export interface NetworkGraphNodeCardProps
   position: { x: number; y: number }
   selected?: boolean
   interactive?: boolean
-  onNodeMouseDown?: (e: React.MouseEvent<SVGGElement>, id: string) => void
+  onNodePointerDown?: (e: React.PointerEvent<SVGGElement>, id: string) => void
   onNodeSelect?: (id: string) => void
 }
 
@@ -80,7 +87,7 @@ const NetworkGraphNodeCard = React.forwardRef<
       position,
       selected = false,
       interactive = true,
-      onNodeMouseDown,
+      onNodePointerDown,
       onNodeSelect,
       className,
       style,
@@ -103,11 +110,11 @@ const NetworkGraphNodeCard = React.forwardRef<
           className
         )}
         transform={`translate(${x},${y})`}
-        onMouseDown={
+        onPointerDown={
           interactive
             ? (e) => {
                 e.stopPropagation()
-                onNodeMouseDown?.(e, node.id)
+                onNodePointerDown?.(e, node.id)
               }
             : undefined
         }
@@ -264,6 +271,62 @@ const NetworkGraphEdgeLine = React.forwardRef<
 })
 NetworkGraphEdgeLine.displayName = "NetworkGraphEdgeLine"
 
+// ─── NetworkGraphEdgeLabel ─────────────────────────────────────────────────────
+
+export interface NetworkGraphEdgeLabelProps
+  extends React.SVGAttributes<SVGGElement> {
+  label: string
+  x: number
+  y: number
+  highlighted?: boolean
+}
+
+const NetworkGraphEdgeLabel = React.forwardRef<
+  SVGGElement,
+  NetworkGraphEdgeLabelProps
+>(({ label, x, y, highlighted = false, className, ...props }, ref) => {
+  // Heuristic sizing: ~6px per char at 10px font, 8px horizontal padding, 16px height
+  const textW = label.length * 6
+  const padX = 4
+  const padY = 2
+  const rw = textW + padX * 2
+  const rh = 14 + padY * 2
+
+  return (
+    <g
+      ref={ref}
+      data-slot="network-graph-edge-label"
+      className={cn("pointer-events-none", className)}
+      transform={`translate(${x - rw / 2},${y - rh / 2})`}
+      {...props}
+    >
+      <rect
+        width={rw}
+        height={rh}
+        rx={4}
+        className={cn(
+          "fill-card stroke-border [stroke-width:0.5]",
+          highlighted && "stroke-muted-foreground"
+        )}
+      />
+      <text
+        x={rw / 2}
+        y={rh / 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={10}
+        className={cn(
+          "select-none fill-muted-foreground",
+          highlighted && "fill-foreground"
+        )}
+      >
+        {label}
+      </text>
+    </g>
+  )
+})
+NetworkGraphEdgeLabel.displayName = "NetworkGraphEdgeLabel"
+
 // ─── NetworkGraphControls ──────────────────────────────────────────────────────
 // Uses actual shadcn <Button variant="outline" size="icon"> — no custom classes
 
@@ -372,6 +435,8 @@ export interface NetworkGraphProps extends React.HTMLAttributes<HTMLDivElement> 
   interactive?: boolean
   /** Called when the selected node changes. Receives the node id, or null when deselected. */
   onSelectionChange?: (id: string | null) => void
+  /** Custom simulation parameters. Merged with defaults. */
+  simulationConfig?: Partial<SimulationConfig>
 }
 
 const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
@@ -383,6 +448,7 @@ const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
       height = 500,
       interactive = true,
       onSelectionChange,
+      simulationConfig,
       className,
       ...props
     },
@@ -459,9 +525,10 @@ const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
         (pos) => {
           setPositions(toMap(pos))
           setSimDone(true)
-        }
+        },
+        simulationConfig
       )
-    }, [nodes, edges, width, height])
+    }, [nodes, edges, width, height, simulationConfig])
 
     // ── Auto-fit once simulation settles ──────────────────────────────────────
     React.useEffect(() => {
@@ -471,12 +538,13 @@ const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
     }, [simDone, fit])
 
     // ── Node drag ────────────────────────────────────────────────────────────
-    const onNodeMouseDown = React.useCallback(
-      (e: React.MouseEvent<SVGGElement>, id: string) => {
+    const onNodePointerDown = React.useCallback(
+      (e: React.PointerEvent<SVGGElement>, id: string) => {
         if (!interactive || e.button !== 0) return
+        ;(e.target as Element).setPointerCapture?.(e.pointerId)
         dragRef.current = { id, sx: e.clientX, sy: e.clientY }
 
-        const onMove = (ev: MouseEvent) => {
+        const onMove = (ev: PointerEvent) => {
           if (!dragRef.current) return
           const dx = (ev.clientX - dragRef.current.sx) / tf.scale
           const dy = (ev.clientY - dragRef.current.sy) / tf.scale
@@ -490,23 +558,66 @@ const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
 
         const onUp = () => {
           dragRef.current = null
-          window.removeEventListener("mousemove", onMove)
-          window.removeEventListener("mouseup", onUp)
+          window.removeEventListener("pointermove", onMove)
+          window.removeEventListener("pointerup", onUp)
         }
 
-        window.addEventListener("mousemove", onMove)
-        window.addEventListener("mouseup", onUp)
+        window.addEventListener("pointermove", onMove)
+        window.addEventListener("pointerup", onUp)
       },
       [interactive, tf.scale]
     )
 
-    // ── Canvas pan ───────────────────────────────────────────────────────────
-    const onSvgMouseDown = React.useCallback(
-      (e: React.MouseEvent<SVGSVGElement>) => {
+    // ── Canvas pan + pinch-zoom ───────────────────────────────────────────────
+    const pointersRef = React.useRef<Map<number, { x: number; y: number }>>(
+      new Map()
+    )
+    const pinchRef = React.useRef<{ dist: number; mx: number; my: number } | null>(
+      null
+    )
+
+    const onSvgPointerDown = React.useCallback(
+      (e: React.PointerEvent<SVGSVGElement>) => {
         if (!interactive || e.button !== 0) return
+        pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+        // If two fingers, start pinch tracking
+        if (pointersRef.current.size === 2) {
+          const [a, b] = [...pointersRef.current.values()]
+          const dist = Math.hypot(b.x - a.x, b.y - a.y)
+          pinchRef.current = { dist, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }
+          panRef.current = null // cancel any active pan
+          return
+        }
+
         panRef.current = { sx: e.clientX, sy: e.clientY, ox: tf.x, oy: tf.y }
 
-        const onMove = (ev: MouseEvent) => {
+        const onMove = (ev: PointerEvent) => {
+          pointersRef.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
+
+          // Pinch-zoom with two pointers
+          if (pointersRef.current.size >= 2 && pinchRef.current) {
+            const pts = [...pointersRef.current.values()]
+            const newDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y)
+            const factor = newDist / pinchRef.current.dist
+            const el = svgRef.current
+            if (!el) return
+            const rect = el.getBoundingClientRect()
+            const mx = (pts[0].x + pts[1].x) / 2 - rect.left
+            const my = (pts[0].y + pts[1].y) / 2 - rect.top
+            setTf((t) => {
+              const ns = Math.max(0.2, Math.min(3, t.scale * factor))
+              return {
+                scale: ns,
+                x: mx - (mx - t.x) * (ns / t.scale),
+                y: my - (my - t.y) * (ns / t.scale),
+              }
+            })
+            pinchRef.current.dist = newDist
+            return
+          }
+
+          // Single-pointer pan
           if (!panRef.current) return
           setTf((t) => ({
             ...t,
@@ -515,14 +626,20 @@ const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
           }))
         }
 
-        const onUp = () => {
-          panRef.current = null
-          window.removeEventListener("mousemove", onMove)
-          window.removeEventListener("mouseup", onUp)
+        const onUp = (ev: PointerEvent) => {
+          pointersRef.current.delete(ev.pointerId)
+          if (pointersRef.current.size < 2) pinchRef.current = null
+          if (pointersRef.current.size === 0) {
+            panRef.current = null
+            window.removeEventListener("pointermove", onMove)
+            window.removeEventListener("pointerup", onUp)
+            window.removeEventListener("pointercancel", onUp)
+          }
         }
 
-        window.addEventListener("mousemove", onMove)
-        window.addEventListener("mouseup", onUp)
+        window.addEventListener("pointermove", onMove)
+        window.addEventListener("pointerup", onUp)
+        window.addEventListener("pointercancel", onUp)
       },
       [interactive, tf]
     )
@@ -614,9 +731,9 @@ const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
           ref={svgRef}
           width={width}
           height={height}
-          onMouseDown={onSvgMouseDown}
+          onPointerDown={onSvgPointerDown}
           onClick={() => select(null)}
-          className="block"
+          className="block touch-none"
           aria-label="Network graph"
           role="img"
         >
@@ -674,6 +791,31 @@ const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
               ))}
             </g>
 
+            {/* Edge labels — rendered above edge lines, below nodes */}
+            <g aria-hidden="true">
+              {edges.map((e) => {
+                if (!e.label) return null
+                const s = positions[e.source]
+                const t = positions[e.target]
+                if (!s || !t) return null
+                const nodeBounds = { width: NODE_W, height: NODE_H }
+                const exit = getNodeExitPoint(s, t, nodeBounds)
+                const entry = getNodeExitPoint(t, s, nodeBounds)
+                const mx = (exit.x + entry.x) / 2
+                const my = (exit.y + entry.y) / 2
+                const key = getEdgeKey(e.source, e.target)
+                return (
+                  <NetworkGraphEdgeLabel
+                    key={`label-${key}`}
+                    label={e.label}
+                    x={mx}
+                    y={my}
+                    highlighted={hiEdgeKeys.has(key)}
+                  />
+                )
+              })}
+            </g>
+
             {/* Nodes — fade in once simulation settles */}
             <g
               style={{
@@ -689,7 +831,7 @@ const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
                     position={positions[node.id]}
                     selected={selected === node.id}
                     interactive={interactive}
-                    onNodeMouseDown={onNodeMouseDown}
+                    onNodePointerDown={onNodePointerDown}
                     onNodeSelect={select}
                   />
                 ) : null
@@ -725,6 +867,7 @@ export {
   NetworkGraph,
   NetworkGraphNodeCard,
   NetworkGraphEdgeLine,
+  NetworkGraphEdgeLabel,
   NetworkGraphControls,
   NetworkGraphNodeInfo,
 }
