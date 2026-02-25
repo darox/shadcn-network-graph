@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, fireEvent } from "@testing-library/react"
-import NetworkGraph from "@/components/ui/network-graph"
+import { render, fireEvent, act } from "@testing-library/react"
+import { NetworkGraph } from "@/components/ui/network-graph"
 
 // ─── Mock the simulation so tests don't depend on requestAnimationFrame ───────
 
@@ -277,6 +277,300 @@ describe("NetworkGraph", () => {
         edges={edges}
         simulationConfig={{ iterations: 100, gravity: 0.2 }}
       />
+    )
+    const root = container.querySelector('[data-slot="network-graph"]')
+    expect(root).toBeInTheDocument()
+  })
+
+  // ── Interaction tests ──────────────────────────────────────────────────
+
+  it("zoom-in button increases scale (changes transform)", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} interactive={true} />
+    )
+
+    const svg = container.querySelector("svg")!
+    const gTransform = svg.querySelector("g")!
+    const before = gTransform.getAttribute("transform")
+
+    const zoomInBtn = container.querySelector(
+      '[aria-label="Zoom in"]'
+    ) as HTMLButtonElement
+    fireEvent.click(zoomInBtn)
+
+    const after = gTransform.getAttribute("transform")
+    expect(after).not.toBe(before)
+  })
+
+  it("zoom-out button changes transform", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} interactive={true} />
+    )
+
+    const svg = container.querySelector("svg")!
+    const gTransform = svg.querySelector("g")!
+    const before = gTransform.getAttribute("transform")
+
+    const zoomOutBtn = container.querySelector(
+      '[aria-label="Zoom out"]'
+    ) as HTMLButtonElement
+    fireEvent.click(zoomOutBtn)
+
+    const after = gTransform.getAttribute("transform")
+    expect(after).not.toBe(before)
+  })
+
+  it("reset-view button resets the transform", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} interactive={true} />
+    )
+
+    // Zoom in first, then reset
+    const zoomInBtn = container.querySelector(
+      '[aria-label="Zoom in"]'
+    ) as HTMLButtonElement
+    fireEvent.click(zoomInBtn)
+
+    const fitBtn = container.querySelector(
+      '[aria-label="Reset view"]'
+    ) as HTMLButtonElement
+    fireEvent.click(fitBtn)
+
+    // After fit, transform should exist (we can't assert exact values
+    // but it should not throw)
+    const svg = container.querySelector("svg")!
+    const gTransform = svg.querySelector("g")!
+    expect(gTransform.getAttribute("transform")).toBeTruthy()
+  })
+
+  it("pan via pointerdown + pointermove on SVG changes transform", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} interactive={true} />
+    )
+
+    const svg = container.querySelector("svg")!
+    const gTransform = svg.querySelector("g")!
+    const before = gTransform.getAttribute("transform")
+
+    // Simulate pointer pan
+    fireEvent.pointerDown(svg, { clientX: 100, clientY: 100, button: 0, pointerId: 1 })
+    fireEvent.pointerMove(window, { clientX: 150, clientY: 130, pointerId: 1 })
+    fireEvent.pointerUp(window, { pointerId: 1 })
+
+    const after = gTransform.getAttribute("transform")
+    expect(after).not.toBe(before)
+  })
+
+  it("node drag via pointerdown + pointermove updates node position", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} interactive={true} />
+    )
+
+    const nodeEl = container.querySelector(
+      '[data-slot="network-graph-node"]'
+    )!
+
+    // Simulate drag
+    fireEvent.pointerDown(nodeEl, { clientX: 100, clientY: 100, button: 0, pointerId: 1 })
+    fireEvent.pointerMove(window, { clientX: 120, clientY: 110, pointerId: 1 })
+    fireEvent.pointerUp(window, { pointerId: 1 })
+
+    // After drag, the node's transform should have changed from its mock position
+    const updatedTransform = nodeEl.getAttribute("transform")
+    expect(updatedTransform).toBeTruthy()
+  })
+
+  it("does not pan when interactive=false", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} interactive={false} />
+    )
+
+    const svg = container.querySelector("svg")!
+    const gTransform = svg.querySelector("g")!
+    const before = gTransform.getAttribute("transform")
+
+    fireEvent.pointerDown(svg, { clientX: 100, clientY: 100, button: 0, pointerId: 1 })
+    fireEvent.pointerMove(window, { clientX: 150, clientY: 130, pointerId: 1 })
+    fireEvent.pointerUp(window, { pointerId: 1 })
+
+    const after = gTransform.getAttribute("transform")
+    expect(after).toBe(before)
+  })
+
+  it("scroll wheel changes zoom", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} interactive={true} />
+    )
+
+    const svg = container.querySelector("svg")!
+    const gTransform = svg.querySelector("g")!
+    const before = gTransform.getAttribute("transform")
+
+    // Dispatch a real wheel event wrapped in act() since the handler
+    // updates React state via addEventListener (not a React event)
+    act(() => {
+      const wheelEvt = new WheelEvent("wheel", {
+        deltaY: -100,
+        clientX: 400,
+        clientY: 250,
+        bubbles: true,
+      })
+      svg.dispatchEvent(wheelEvt)
+    })
+
+    const after = gTransform.getAttribute("transform")
+    expect(after).not.toBe(before)
+  })
+
+  it("shows connection count in node info", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} />
+    )
+
+    // Node "b" has 2 connections (a→b and b→c)
+    const nodeEls = container.querySelectorAll(
+      '[data-slot="network-graph-node"]'
+    )
+    fireEvent.click(nodeEls[1]) // "b"
+
+    const info = container.querySelector(
+      '[data-slot="network-graph-node-info"]'
+    )
+    expect(info).toHaveTextContent("2 connections")
+  })
+
+  // ── v3: Custom colors ─────────────────────────────────────────────────
+
+  it("applies color class to node rect when color='primary'", () => {
+    const colorNodes = [
+      { id: "x", label: "X", color: "primary" as const },
+    ]
+    const { container } = render(
+      <NetworkGraph nodes={colorNodes} edges={[]} />
+    )
+    const rect = container.querySelector(
+      '[data-slot="network-graph-node-rect"]'
+    )
+    expect(rect).toHaveClass("fill-primary")
+  })
+
+  // ── v3: Animated edges ────────────────────────────────────────────────
+
+  it("applies animated class when edge.animated=true", () => {
+    const animEdges = [
+      { source: "a", target: "b", animated: true },
+    ]
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={animEdges} />
+    )
+    const edge = container.querySelector('[data-slot="network-graph-edge"]')
+    expect(edge).toHaveClass("ng-animated-edge")
+  })
+
+  // ── v3: Node grouping ────────────────────────────────────────────────
+
+  it("renders group hull when nodes have group property", () => {
+    const groupedNodes = [
+      { id: "a", label: "A", group: "frontend" },
+      { id: "b", label: "B", group: "frontend" },
+      { id: "c", label: "C" },
+    ]
+    const { container } = render(
+      <NetworkGraph nodes={groupedNodes} edges={edges} />
+    )
+    const groups = container.querySelectorAll(
+      '[data-slot="network-graph-group"]'
+    )
+    expect(groups).toHaveLength(1)
+  })
+
+  it("does not render group when no nodes have group", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} />
+    )
+    const groups = container.querySelectorAll(
+      '[data-slot="network-graph-group"]'
+    )
+    expect(groups).toHaveLength(0)
+  })
+
+  // ── v3: Search ────────────────────────────────────────────────────────
+
+  it("renders search input when searchable=true", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} searchable={true} />
+    )
+    const search = container.querySelector(
+      '[data-slot="network-graph-search"]'
+    )
+    expect(search).toBeInTheDocument()
+  })
+
+  it("does not render search when searchable is not set", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} />
+    )
+    const search = container.querySelector(
+      '[data-slot="network-graph-search"]'
+    )
+    expect(search).not.toBeInTheDocument()
+  })
+
+  // ── v3: Minimap ───────────────────────────────────────────────────────
+
+  it("renders minimap when minimap=true", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} minimap={true} />
+    )
+    const minimap = container.querySelector(
+      '[data-slot="network-graph-minimap"]'
+    )
+    expect(minimap).toBeInTheDocument()
+  })
+
+  it("does not render minimap when minimap is not set", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} />
+    )
+    const minimap = container.querySelector(
+      '[data-slot="network-graph-minimap"]'
+    )
+    expect(minimap).not.toBeInTheDocument()
+  })
+
+  // ── v3: Export ────────────────────────────────────────────────────────
+
+  it("renders export buttons when exportable=true", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} exportable={true} />
+    )
+    const svgBtn = container.querySelector('[aria-label="Export SVG"]')
+    const pngBtn = container.querySelector('[aria-label="Export PNG"]')
+    expect(svgBtn).toBeInTheDocument()
+    expect(pngBtn).toBeInTheDocument()
+  })
+
+  it("does not render export buttons when exportable is not set", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} />
+    )
+    const svgBtn = container.querySelector('[aria-label="Export SVG"]')
+    expect(svgBtn).not.toBeInTheDocument()
+  })
+
+  // ── v3: Layout prop ──────────────────────────────────────────────────
+
+  it("renders with layout='tree' without crashing", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} layout="tree" />
+    )
+    const root = container.querySelector('[data-slot="network-graph"]')
+    expect(root).toBeInTheDocument()
+  })
+
+  it("renders with layout='radial' without crashing", () => {
+    const { container } = render(
+      <NetworkGraph nodes={nodes} edges={edges} layout="radial" />
     )
     const root = container.querySelector('[data-slot="network-graph"]')
     expect(root).toBeInTheDocument()

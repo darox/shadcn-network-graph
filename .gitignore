@@ -9,6 +9,9 @@ out/
 build/
 dist/
 
+# shadcn registry build output
+public/r/
+
 # env
 .env
 .env*.local

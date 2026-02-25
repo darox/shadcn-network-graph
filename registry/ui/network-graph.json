@@ -3,7 +3,7 @@
   "name": "network-graph",
   "type": "registry:ui",
   "title": "Network Graph",
-  "description": "A force-directed network graph component. Supports pan, zoom, drag, node selection, and automatic theming via shadcn CSS variables.",
+  "description": "A force-directed network graph component. Supports pan, zoom, drag, node selection, search, minimap, export, tree/radial layouts, and automatic theming via shadcn CSS variables.",
   "dependencies": [
     "lucide-react"
   ],
@@ -20,6 +20,11 @@
       "path": "registry/ui/simulation.ts",
       "type": "registry:lib",
       "target": "components/ui/network-graph-simulation.ts"
+    },
+    {
+      "path": "registry/ui/network-graph-layouts.ts",
+      "type": "registry:lib",
+      "target": "components/ui/network-graph-layouts.ts"
     }
   ]
 }

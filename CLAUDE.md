@@ -8,8 +8,8 @@ Lives at `components/ui/network-graph.tsx`.
 - Zero injected `<style>` tags — Tailwind utility classes via `cn()` only
 - `className` forwarded on every component
 - `data-slot` on every element
-- `React.forwardRef` + `displayName` on every export
-- TypeScript interfaces extend the correct HTML/SVG element types
+- Plain function components (React 19 ref-as-prop pattern), no `forwardRef` or `displayName`
+- TypeScript interfaces extend `React.ComponentProps<"element">`
 - No hardcoded hex colors — Tailwind semantic classes only (`fill-card`, `stroke-border`, etc.)
 - SVG drop-shadow via inline `filter: drop-shadow(...)`, not Tailwind `shadow-*`
 - SVG marker fill via classed `<path>` element, not inline `hsl(var(--...))`
@@ -32,7 +32,7 @@ interface NetworkGraphEdge {
   target: string
 }
 
-interface NetworkGraphProps extends React.HTMLAttributes<HTMLDivElement> {
+interface NetworkGraphProps extends React.ComponentProps<"div"> {
   nodes?: NetworkGraphNode[]
   edges?: NetworkGraphEdge[]
   width?: number

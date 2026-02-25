@@ -5,7 +5,7 @@ A force-directed network graph component for visualizing relationships between n
 ## Installation
 
 ```bash
-npx shadcn add network-graph
+npx shadcn@latest add https://shadcn-network-graph.vercel.app/r/network-graph.json
 ```
 
 ## Usage
@@ -108,7 +108,7 @@ Pass `interactive={false}` to disable all pan, zoom, and drag interactions. Usef
 
 ## Composable sub-components
 
-Every piece of the graph is a separately exported, `forwardRef`'d component with full `className` forwarding and `data-slot` attributes. You can replace any part individually.
+Every piece of the graph is a separately exported component with full `className` forwarding and `data-slot` attributes. You can replace any part individually.
 
 ### Custom controls position
 
