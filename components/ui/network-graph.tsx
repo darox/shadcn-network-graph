@@ -67,13 +67,11 @@ export interface NetworkGraphEdge {
 
 // ─── Internal constants ────────────────────────────────────────────────────────
 
-const NODE_W = 148
-const NODE_H = 46
-const ICON_W = 28
-const ICON_PAD = 10
-const LABEL_X = ICON_PAD + ICON_W + 8
-/** Arrow marker size — used to offset edge endpoint so line doesn't overlap arrowhead */
-const ARROW_OFFSET = 6
+const NODE_W = 180
+const NODE_H = 56
+const ICON_W = 34
+const ICON_PAD = 12
+const LABEL_X = ICON_PAD + ICON_W + 10
 
 // ─── Node color presets ───────────────────────────────────────────────────────
 
@@ -165,7 +163,7 @@ function NetworkGraphNodeCard({
           data-slot="network-graph-node-rect"
           width={NODE_W}
           height={NODE_H}
-          rx={6}
+          rx={8}
           className={cn(
             cc.rect,
             "[stroke-width:1]",
@@ -181,7 +179,7 @@ function NetworkGraphNodeCard({
           y={(NODE_H - ICON_W) / 2}
           width={ICON_W}
           height={ICON_W}
-          rx={4}
+          rx={6}
           className={cc.iconBg}
         />
 
@@ -192,33 +190,33 @@ function NetworkGraphNodeCard({
           y={NODE_H / 2}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize={14}
+          fontSize={16}
           className="pointer-events-none select-none"
         >
           {node.icon ?? "◈"}
         </text>
 
-        {/* Label — text-[12px] font-medium fill-card-foreground */}
+        {/* Label — text-sm font-medium fill-card-foreground */}
         <text
           data-slot="network-graph-node-label"
           x={LABEL_X}
-          y={NODE_H / 2 - (hasSub ? 7 : 0)}
+          y={NODE_H / 2 - (hasSub ? 8 : 0)}
           dominantBaseline="middle"
-          fontSize={12}
+          fontSize={14}
           fontWeight={500}
           className={cn("pointer-events-none select-none", cc.label)}
         >
           {node.label}
         </text>
 
-        {/* Subtitle — text-[10px] fill-muted-foreground */}
+        {/* Subtitle — text-xs fill-muted-foreground */}
         {hasSub && (
           <text
             data-slot="network-graph-node-subtitle"
             x={LABEL_X}
-            y={NODE_H / 2 + 8}
+            y={NODE_H / 2 + 10}
             dominantBaseline="middle"
-            fontSize={10}
+            fontSize={11}
             className={cn("pointer-events-none select-none", cc.subtitle)}
           >
             {node.subtitle}
@@ -246,16 +244,17 @@ function NetworkGraphEdgeLine({ edge, positions, highlighted = false, className,
   const nodeBounds = { width: NODE_W, height: NODE_H }
   const exit = getNodeExitPoint(s, t, nodeBounds)
 
-  // For the entry point: flip direction (target → source) to get target border exit,
-  // then offset inward by ARROW_OFFSET so arrowhead doesn't overlap the node
+  // Entry point: where the line meets the target node border,
+  // pulled back so the arrowhead extends from line-end to the card border
   const dx = t.x - s.x
   const dy = t.y - s.y
   const dist = Math.sqrt(dx * dx + dy * dy) || 1
   const ux = dx / dist
   const uy = dy / dist
   const entry = getNodeExitPoint(t, s, nodeBounds)
-  const x2 = entry.x + ux * ARROW_OFFSET
-  const y2 = entry.y + uy * ARROW_OFFSET
+  const ARROW_LEN = 12
+  const x2 = entry.x - ux * ARROW_LEN
+  const y2 = entry.y - uy * ARROW_LEN
 
   return (
     <line
@@ -291,10 +290,10 @@ export interface NetworkGraphEdgeLabelProps
 }
 
 function NetworkGraphEdgeLabel({ label, x, y, highlighted = false, className, ...props }: NetworkGraphEdgeLabelProps) {
-  // Heuristic sizing: ~6px per char at 10px font, 8px horizontal padding, 16px height
-  const textW = label.length * 6
-  const padX = 4
-  const padY = 2
+  // Heuristic sizing: ~6.5px per char at 11px font
+  const textW = label.length * 6.5
+  const padX = 5
+  const padY = 3
   const rw = textW + padX * 2
   const rh = 14 + padY * 2
 
@@ -319,7 +318,7 @@ function NetworkGraphEdgeLabel({ label, x, y, highlighted = false, className, ..
         y={rh / 2}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={10}
+        fontSize={11}
         className={cn(
           "select-none fill-muted-foreground",
           highlighted && "fill-foreground"
@@ -1132,24 +1131,26 @@ function NetworkGraph({
              */}
             <marker
               id="ng-arrow"
-              markerWidth={6}
-              markerHeight={6}
-              refX={5}
-              refY={3}
+              markerWidth={12}
+              markerHeight={10}
+              refX={0}
+              refY={5}
               orient="auto"
+              markerUnits="userSpaceOnUse"
             >
-              <path d="M0,0 L0,6 L6,3 z" className="fill-border" />
+              <path d="M0,0 L0,10 L12,5 z" className="fill-border" />
             </marker>
             <marker
               id="ng-arrow-hi"
-              markerWidth={6}
-              markerHeight={6}
-              refX={5}
-              refY={3}
+              markerWidth={12}
+              markerHeight={10}
+              refX={0}
+              refY={5}
               orient="auto"
+              markerUnits="userSpaceOnUse"
             >
               <path
-                d="M0,0 L0,6 L6,3 z"
+                d="M0,0 L0,10 L12,5 z"
                 className="fill-muted-foreground"
               />
             </marker>

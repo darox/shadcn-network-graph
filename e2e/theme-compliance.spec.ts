@@ -24,33 +24,7 @@ async function getCSSVar(page: Page, varName: string): Promise<string> {
   }, varName)
 }
 
-/**
- * Gets the computed fill/stroke/color of an SVG or HTML element as rgb.
- */
-async function getComputedColor(
-  page: Page,
-  selector: string,
-  prop: string
-): Promise<string> {
-  return page.evaluate(
-    ([sel, p]) => {
-      const el = document.querySelector(sel)
-      if (!el) throw new Error(`Element not found: ${sel}`)
-      return getComputedStyle(el).getPropertyValue(p)
-    },
-    [selector, prop] as const
-  )
-}
-
-const themes = ["neutral", "zinc", "slate", "rose", "green", "orange"] as const
 const modes = ["light", "dark"] as const
-
-async function switchTheme(page: Page, theme: string) {
-  // Click the theme button by its text
-  const btn = page.getByRole("button", { name: new RegExp(`^${theme}$`, "i") })
-  await btn.click()
-  await page.waitForTimeout(100)
-}
 
 async function toggleDark(page: Page) {
   // The dark/light toggle is the last button with a sun/moon icon
@@ -62,83 +36,55 @@ async function toggleDark(page: Page) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Every theme × mode renders without errors
+// 1. Light and dark mode render without errors
 // ---------------------------------------------------------------------------
-for (const theme of themes) {
-  for (const mode of modes) {
-    test(`${theme} ${mode}: renders graph without errors`, async ({ page }) => {
-      await page.goto("/")
-      await page.waitForSelector('[data-slot="network-graph-node"]', {
-        timeout: 10000,
-      })
-
-      // Switch to the requested theme
-      if (theme !== "neutral") await switchTheme(page, theme)
-      if (mode === "dark") await toggleDark(page)
-      await page.waitForTimeout(150)
-
-      // Graph nodes render
-      const nodes = page.locator('[data-slot="network-graph-node"]')
-      await expect(nodes).toHaveCount(10)
-
-      // Edges render
-      const edges = page.locator('[data-slot="network-graph-edge"]')
-      await expect(edges).not.toHaveCount(0)
-
-      // Group hulls render
-      const groups = page.locator('[data-slot="network-graph-group"]')
-      await expect(groups).not.toHaveCount(0)
-
-      // Minimap renders
-      await expect(
-        page.locator('[data-slot="network-graph-minimap"]')
-      ).toBeVisible()
-
-      // Controls render
-      await expect(
-        page.locator('[data-slot="network-graph-controls"]')
-      ).toBeVisible()
-
-      // Search renders
-      await expect(
-        page.locator('[data-slot="network-graph-search"]')
-      ).toBeVisible()
-
-      // No console errors during render
-      const errors: string[] = []
-      page.on("console", (msg) => {
-        if (msg.type() === "error") errors.push(msg.text())
-      })
-      // Give time for any delayed errors
-      await page.waitForTimeout(200)
-      expect(errors.length).toBe(0)
+for (const mode of modes) {
+  test(`neutral ${mode}: renders graph without errors`, async ({ page }) => {
+    await page.goto("/")
+    await page.waitForSelector('[data-slot="network-graph-node"]', {
+      timeout: 10000,
     })
-  }
-}
 
-// ---------------------------------------------------------------------------
-// 2. Background color changes between themes
-// ---------------------------------------------------------------------------
-test("background color differs between themes", async ({ page }) => {
-  await page.goto("/")
-  await page.waitForSelector('[data-slot="network-graph-node"]', {
-    timeout: 10000,
+    if (mode === "dark") await toggleDark(page)
+    await page.waitForTimeout(150)
+
+    // Graph nodes render
+    const nodes = page.locator('[data-slot="network-graph-node"]')
+    await expect(nodes).toHaveCount(10)
+
+    // Edges render
+    const edges = page.locator('[data-slot="network-graph-edge"]')
+    await expect(edges).not.toHaveCount(0)
+
+    // Group hulls render
+    const groups = page.locator('[data-slot="network-graph-group"]')
+    await expect(groups).not.toHaveCount(0)
+
+    // Minimap renders
+    await expect(
+      page.locator('[data-slot="network-graph-minimap"]')
+    ).toBeVisible()
+
+    // Controls render
+    await expect(
+      page.locator('[data-slot="network-graph-controls"]')
+    ).toBeVisible()
+
+    // Search renders
+    await expect(
+      page.locator('[data-slot="network-graph-search"]')
+    ).toBeVisible()
+
+    // No console errors during render
+    const errors: string[] = []
+    page.on("console", (msg) => {
+      if (msg.type() === "error") errors.push(msg.text())
+    })
+    // Give time for any delayed errors
+    await page.waitForTimeout(200)
+    expect(errors.length).toBe(0)
   })
-
-  // shadcn themes share the same --background in light mode (white).
-  // The distinguishing token is --primary, which changes per theme.
-  const primaryColors: string[] = []
-  for (const theme of themes) {
-    await switchTheme(page, theme)
-    await page.waitForTimeout(100)
-    const primary = await getCSSVar(page, "--primary")
-    primaryColors.push(primary)
-  }
-
-  // Rose, green, orange should have distinct --primary colors
-  const unique = new Set(primaryColors)
-  expect(unique.size).toBeGreaterThanOrEqual(3)
-})
+}
 
 // ---------------------------------------------------------------------------
 // 3. Dark mode inverts background/foreground
@@ -164,65 +110,43 @@ test("dark mode inverts background and foreground", async ({ page }) => {
 })
 
 // ---------------------------------------------------------------------------
-// 4. Node color tokens resolve correctly per theme
+// 4. All nodes use default card fill
 // ---------------------------------------------------------------------------
-for (const theme of themes) {
-  test(`${theme}: node color tokens are distinct`, async ({ page }) => {
-    await page.goto("/")
-    await page.waitForSelector('[data-slot="network-graph-node"]', {
-      timeout: 10000,
-    })
-    if (theme !== "neutral") await switchTheme(page, theme)
-    await page.waitForTimeout(100)
-
-    // Get the computed fill of different colored node rects
-    const primaryFill = await page.evaluate(() => {
-      const el = document.querySelector(
-        '[data-slot="network-graph-node-rect"].fill-primary'
-      )
-      return el ? getComputedStyle(el).fill : null
-    })
-
-    const defaultFill = await page.evaluate(() => {
-      const el = document.querySelector(
-        '[data-slot="network-graph-node-rect"].fill-card'
-      )
-      return el ? getComputedStyle(el).fill : null
-    })
-
-    // Primary-colored nodes should have different fill than default-colored nodes
-    if (primaryFill && defaultFill) {
-      expect(primaryFill).not.toBe(defaultFill)
-    }
-  })
-}
-
-// ---------------------------------------------------------------------------
-// 5. Destructive color is visually red-ish (not same as primary)
-// ---------------------------------------------------------------------------
-test("destructive color is distinct from primary", async ({ page }) => {
+test("all nodes use default card fill", async ({ page }) => {
   await page.goto("/")
   await page.waitForSelector('[data-slot="network-graph-node"]', {
     timeout: 10000,
   })
 
-  const destructiveFill = await page.evaluate(() => {
-    const el = document.querySelector(
-      '[data-slot="network-graph-node-rect"].fill-destructive'
+  // All node rects should use the default card fill
+  const fills = await page.evaluate(() => {
+    const rects = document.querySelectorAll(
+      '[data-slot="network-graph-node-rect"]'
     )
+    return Array.from(rects).map((el) => getComputedStyle(el).fill)
+  })
+
+  // All fills should be the same (no colored variants)
+  const unique = new Set(fills)
+  expect(unique.size).toBe(1)
+})
+
+// ---------------------------------------------------------------------------
+// 5. Node rects have a valid fill color
+// ---------------------------------------------------------------------------
+test("node rects have a valid fill color", async ({ page }) => {
+  await page.goto("/")
+  await page.waitForSelector('[data-slot="network-graph-node"]', {
+    timeout: 10000,
+  })
+
+  const fill = await page.evaluate(() => {
+    const el = document.querySelector('[data-slot="network-graph-node-rect"]')
     return el ? getComputedStyle(el).fill : null
   })
 
-  const primaryFill = await page.evaluate(() => {
-    const el = document.querySelector(
-      '[data-slot="network-graph-node-rect"].fill-primary'
-    )
-    return el ? getComputedStyle(el).fill : null
-  })
-
-  expect(destructiveFill).not.toBeNull()
-  expect(primaryFill).not.toBeNull()
-  expect(destructiveFill).not.toBe(primaryFill)
+  expect(fill).toBeTruthy()
+  expect(fill).not.toBe("none")
 })
 
 // ---------------------------------------------------------------------------
@@ -420,45 +344,7 @@ test("animated edges have marching-ants animation", async ({ page }) => {
 })
 
 // ---------------------------------------------------------------------------
-// 15. Theme switching propagates to all graph elements
-// ---------------------------------------------------------------------------
-for (const theme of ["rose", "green", "orange"] as const) {
-  test(`${theme}: primary color propagates to node fills`, async ({
-    page,
-  }) => {
-    await page.goto("/")
-    await page.waitForSelector('[data-slot="network-graph-node"]', {
-      timeout: 10000,
-    })
-
-    // Get neutral primary fill
-    const neutralFill = await page.evaluate(() => {
-      const el = document.querySelector(
-        '[data-slot="network-graph-node-rect"].fill-primary'
-      )
-      return el ? getComputedStyle(el).fill : null
-    })
-
-    // Switch to colored theme
-    await switchTheme(page, theme)
-    await page.waitForTimeout(150)
-
-    const themedFill = await page.evaluate(() => {
-      const el = document.querySelector(
-        '[data-slot="network-graph-node-rect"].fill-primary'
-      )
-      return el ? getComputedStyle(el).fill : null
-    })
-
-    // Rose/Green/Orange primary should differ from neutral primary
-    expect(themedFill).not.toBeNull()
-    expect(neutralFill).not.toBeNull()
-    expect(themedFill).not.toBe(neutralFill)
-  })
-}
-
-// ---------------------------------------------------------------------------
-// 16. Dark mode changes graph background
+// 15. Dark mode changes graph background
 // ---------------------------------------------------------------------------
 test("dark mode changes graph container background", async ({ page }) => {
   await page.goto("/")
@@ -523,40 +409,27 @@ test("arrow markers have border fill", async ({ page }) => {
 })
 
 // ---------------------------------------------------------------------------
-// 19. LAN demo: theme colors propagate to colored nodes
+// 19. LAN demo: nodes render with uniform styling
 // ---------------------------------------------------------------------------
-test("LAN demo: theme colors applied correctly", async ({ page }) => {
+test("LAN demo: all nodes use default card fill", async ({ page }) => {
   await page.goto("/lan")
   await page.waitForSelector('[data-slot="network-graph-node"]', {
     timeout: 10000,
   })
 
-  // Primary nodes exist
-  const primary = page.locator(
-    '[data-slot="network-graph-node-rect"].fill-primary'
-  )
-  await expect(primary).not.toHaveCount(0)
+  // All node rects should use the default card fill
+  const nodeRects = page.locator('[data-slot="network-graph-node-rect"]')
+  await expect(nodeRects).not.toHaveCount(0)
 
-  // Destructive nodes exist
-  const destructive = page.locator(
-    '[data-slot="network-graph-node-rect"].fill-destructive'
-  )
-  await expect(destructive).not.toHaveCount(0)
+  const fills = await page.evaluate(() => {
+    const rects = document.querySelectorAll(
+      '[data-slot="network-graph-node-rect"]'
+    )
+    return Array.from(rects).map((el) => getComputedStyle(el).fill)
+  })
 
-  // Accent nodes exist
-  const accent = page.locator(
-    '[data-slot="network-graph-node-rect"].fill-accent'
-  )
-  await expect(accent).not.toHaveCount(0)
-
-  // Switch to rose theme — primary color should change
-  await switchTheme(page, "rose")
-  await page.waitForTimeout(150)
-
-  const rosePrimaryFill = await primary.first().evaluate((el) =>
-    getComputedStyle(el).fill
-  )
-  expect(rosePrimaryFill).toBeTruthy()
+  const unique = new Set(fills)
+  expect(unique.size).toBe(1)
 })
 
 // ---------------------------------------------------------------------------

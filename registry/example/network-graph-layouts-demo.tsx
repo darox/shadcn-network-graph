@@ -4,15 +4,15 @@ import * as React from "react"
 import { NetworkGraph } from "@/components/ui/network-graph"
 
 const nodes = [
-  { id: "root",   label: "Root",    subtitle: "entry",  icon: "⬡", color: "primary" as const },
-  { id: "a",      label: "Node A",  subtitle: "child",  icon: "◈" },
-  { id: "b",      label: "Node B",  subtitle: "child",  icon: "◈" },
-  { id: "c",      label: "Node C",  subtitle: "child",  icon: "◈" },
-  { id: "a1",     label: "Leaf A1", subtitle: "leaf",   icon: "●", color: "accent" as const },
-  { id: "a2",     label: "Leaf A2", subtitle: "leaf",   icon: "●", color: "accent" as const },
-  { id: "b1",     label: "Leaf B1", subtitle: "leaf",   icon: "●", color: "secondary" as const },
-  { id: "c1",     label: "Leaf C1", subtitle: "leaf",   icon: "●", color: "destructive" as const },
-  { id: "c2",     label: "Leaf C2", subtitle: "leaf",   icon: "●", color: "destructive" as const },
+  { id: "root",   label: "Root",    subtitle: "entry" },
+  { id: "a",      label: "Node A",  subtitle: "child" },
+  { id: "b",      label: "Node B",  subtitle: "child" },
+  { id: "c",      label: "Node C",  subtitle: "child" },
+  { id: "a1",     label: "Leaf A1", subtitle: "leaf" },
+  { id: "a2",     label: "Leaf A2", subtitle: "leaf" },
+  { id: "b1",     label: "Leaf B1", subtitle: "leaf" },
+  { id: "c1",     label: "Leaf C1", subtitle: "leaf" },
+  { id: "c2",     label: "Leaf C2", subtitle: "leaf" },
 ]
 
 const edges = [

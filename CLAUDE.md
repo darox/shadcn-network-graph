@@ -63,4 +63,4 @@ tasks/
 - All interactions work: drag, pan, scroll-zoom, select, keyboard nav
 - `interactive={false}` hides controls and disables all interactions
 - `onSelectionChange` fires correctly
-- Works in all 5 shadcn themes (Zinc, Slate, Rose, Green, Orange) in light and dark mode
+- Works in light and dark mode (neutral theme only)

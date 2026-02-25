@@ -4,17 +4,17 @@ import * as React from "react"
 import { NetworkGraph } from "@/components/ui/network-graph"
 
 const nodes = [
-  { id: "internet",  label: "Internet",       subtitle: "WAN",       icon: "🌐", color: "primary" as const, group: "WAN" },
-  { id: "firewall",  label: "Firewall",       subtitle: "security",  icon: "🛡", color: "destructive" as const, group: "WAN" },
-  { id: "router",    label: "Router",         subtitle: "gateway",   icon: "⬡",  color: "accent" as const, group: "Core" },
-  { id: "switch",    label: "Switch",         subtitle: "L2",        icon: "🔀", group: "Core" },
-  { id: "ap",        label: "Wi-Fi AP",       subtitle: "wireless",  icon: "📡", group: "Core" },
-  { id: "server",    label: "File Server",    subtitle: "NAS",       icon: "🗄",  group: "Wired" },
-  { id: "printer",   label: "Printer",        subtitle: "network",   icon: "🖨", group: "Wired" },
-  { id: "pc1",       label: "Workstation 1",  subtitle: "desktop",   icon: "🖥", group: "Wired" },
-  { id: "pc2",       label: "Workstation 2",  subtitle: "desktop",   icon: "🖥", group: "Wired" },
-  { id: "laptop",    label: "Laptop",         subtitle: "wireless",  icon: "💻", group: "Wireless" },
-  { id: "phone",     label: "Phone",          subtitle: "wireless",  icon: "📱", group: "Wireless" },
+  { id: "internet",  label: "Internet",       subtitle: "WAN",       group: "WAN" },
+  { id: "firewall",  label: "Firewall",       subtitle: "security",  group: "WAN" },
+  { id: "router",    label: "Router",         subtitle: "gateway",   group: "Core" },
+  { id: "switch",    label: "Switch",         subtitle: "L2",        group: "Core" },
+  { id: "ap",        label: "Wi-Fi AP",       subtitle: "wireless",  group: "Core" },
+  { id: "server",    label: "File Server",    subtitle: "NAS",       group: "Wired" },
+  { id: "printer",   label: "Printer",        subtitle: "network",   group: "Wired" },
+  { id: "pc1",       label: "Workstation 1",  subtitle: "desktop",   group: "Wired" },
+  { id: "pc2",       label: "Workstation 2",  subtitle: "desktop",   group: "Wired" },
+  { id: "laptop",    label: "Laptop",         subtitle: "wireless",  group: "Wireless" },
+  { id: "phone",     label: "Phone",          subtitle: "wireless",  group: "Wireless" },
 ]
 
 const edges = [

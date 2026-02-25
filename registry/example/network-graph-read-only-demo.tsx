@@ -4,11 +4,11 @@ import * as React from "react"
 import { NetworkGraph } from "@/components/ui/network-graph"
 
 const nodes = [
-  { id: "client", label: "Client",    subtitle: "browser",  icon: "🌐" },
-  { id: "lb",     label: "Load Balancer", subtitle: "nginx", icon: "⬡" },
-  { id: "app1",   label: "App Server 1", subtitle: "node",  icon: "⚙" },
-  { id: "app2",   label: "App Server 2", subtitle: "node",  icon: "⚙" },
-  { id: "db",     label: "Database",  subtitle: "postgres", icon: "🗄" },
+  { id: "client", label: "Client",       subtitle: "browser" },
+  { id: "lb",     label: "Load Balancer", subtitle: "nginx" },
+  { id: "app1",   label: "App Server 1", subtitle: "node" },
+  { id: "app2",   label: "App Server 2", subtitle: "node" },
+  { id: "db",     label: "Database",     subtitle: "postgres" },
 ]
 
 const edges = [
