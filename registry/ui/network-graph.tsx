@@ -42,7 +42,7 @@ export interface NetworkGraphNode {
   id: string
   label: string
   subtitle?: string
-  /** Emoji or short string rendered in the icon slot */
+  /** Emoji or short string rendered in the icon slot. Set to "" to hide the icon. */
   icon?: string
   /** Initial x position. If omitted, randomized by simulation. */
   x?: number
@@ -123,7 +123,9 @@ function NetworkGraphNodeCard({
     const x = position.x - nodeWidth / 2
     const y = position.y - NODE_H / 2
     const hasSub = Boolean(node.subtitle)
+    const hasIcon = node.icon !== ""
     const cc = NODE_COLOR_CLASSES[node.color ?? "default"]
+    const labelX = hasIcon ? LABEL_X : ICON_PAD
 
     return (
       <g
@@ -183,34 +185,38 @@ function NetworkGraphNodeCard({
           )}
         />
 
-        {/* Icon background — bg-muted */}
-        <rect
-          data-slot="network-graph-node-icon-bg"
-          x={ICON_PAD}
-          y={(NODE_H - ICON_W) / 2}
-          width={ICON_W}
-          height={ICON_W}
-          rx={4}
-          className={cc.iconBg}
-        />
+        {hasIcon && (
+          <>
+            {/* Icon background — bg-muted */}
+            <rect
+              data-slot="network-graph-node-icon-bg"
+              x={ICON_PAD}
+              y={(NODE_H - ICON_W) / 2}
+              width={ICON_W}
+              height={ICON_W}
+              rx={4}
+              className={cc.iconBg}
+            />
 
-        {/* Icon */}
-        <text
-          data-slot="network-graph-node-icon"
-          x={ICON_PAD + ICON_W / 2}
-          y={NODE_H / 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={14}
-          className="pointer-events-none select-none"
-        >
-          {node.icon ?? "◈"}
-        </text>
+            {/* Icon */}
+            <text
+              data-slot="network-graph-node-icon"
+              x={ICON_PAD + ICON_W / 2}
+              y={NODE_H / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={14}
+              className="pointer-events-none select-none"
+            >
+              {node.icon ?? "◈"}
+            </text>
+          </>
+        )}
 
         {/* Label — text-[12px] font-medium fill-card-foreground */}
         <text
           data-slot="network-graph-node-label"
-          x={LABEL_X}
+          x={labelX}
           y={NODE_H / 2 - (hasSub ? 7 : 0)}
           dominantBaseline="middle"
           fontSize={12}
@@ -224,7 +230,7 @@ function NetworkGraphNodeCard({
         {hasSub && (
           <text
             data-slot="network-graph-node-subtitle"
-            x={LABEL_X}
+            x={labelX}
             y={NODE_H / 2 + 8}
             dominantBaseline="middle"
             fontSize={10}
