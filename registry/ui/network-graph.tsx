@@ -100,6 +100,8 @@ export interface NetworkGraphNodeCardProps
   interactive?: boolean
   onNodePointerDown?: (e: React.PointerEvent<SVGGElement>, id: string) => void
   onNodeSelect?: (id: string) => void
+  /** Width of node cards in px. Default: NODE_W (148) */
+  nodeWidth?: number
 }
 
 function NetworkGraphNodeCard({
@@ -109,11 +111,12 @@ function NetworkGraphNodeCard({
   interactive = true,
   onNodePointerDown,
   onNodeSelect,
+  nodeWidth = NODE_W,
   className,
   style,
   ...props
 }: NetworkGraphNodeCardProps) {
-    const x = position.x - NODE_W / 2
+    const x = position.x - nodeWidth / 2
     const y = position.y - NODE_H / 2
     const hasSub = Boolean(node.subtitle)
     const cc = NODE_COLOR_CLASSES[node.color ?? "default"]
@@ -165,7 +168,7 @@ function NetworkGraphNodeCard({
         {/* Card background — matches shadcn <Card> shell exactly */}
         <rect
           data-slot="network-graph-node-rect"
-          width={NODE_W}
+          width={nodeWidth}
           height={NODE_H}
           rx={6}
           className={cn(
@@ -237,15 +240,17 @@ export interface NetworkGraphEdgeLineProps
   edge: NetworkGraphEdge
   positions: Record<string, { x: number; y: number }>
   highlighted?: boolean
+  /** Width of node cards in px. Default: NODE_W (148) */
+  nodeWidth?: number
 }
 
-function NetworkGraphEdgeLine({ edge, positions, highlighted = false, className, ...props }: NetworkGraphEdgeLineProps) {
+function NetworkGraphEdgeLine({ edge, positions, highlighted = false, nodeWidth = NODE_W, className, ...props }: NetworkGraphEdgeLineProps) {
   const s = positions[edge.source]
   const t = positions[edge.target]
   if (!s || !t) return null
 
   // Exit source node bounding box, enter target offset by arrow marker size
-  const nodeBounds = { width: NODE_W, height: NODE_H }
+  const nodeBounds = { width: nodeWidth, height: NODE_H }
   const exit = getNodeExitPoint(s, t, nodeBounds)
 
   // For the entry point: flip direction (target → source) to get target border exit,
@@ -365,15 +370,15 @@ function convexHull(pts: { x: number; y: number }[]): { x: number; y: number }[]
 }
 
 /** Expand hull outward from centroid and build a rounded SVG path */
-function hullPath(pts: { x: number; y: number }[], pad: number): string {
+function hullPath(pts: { x: number; y: number }[], pad: number, nodeWidth: number = NODE_W): string {
   if (pts.length === 0) return ""
   const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
   const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length
 
   if (pts.length === 1) {
-    const x = pts[0].x - NODE_W / 2 - pad
+    const x = pts[0].x - nodeWidth / 2 - pad
     const y = pts[0].y - NODE_H / 2 - pad
-    const w = NODE_W + pad * 2
+    const w = nodeWidth + pad * 2
     const h = NODE_H + pad * 2
     const r = Math.min(pad, 16)
     return `M${x + r},${y} h${w - 2 * r} a${r},${r} 0 0 1 ${r},${r} v${h - 2 * r} a${r},${r} 0 0 1 -${r},${r} h-${w - 2 * r} a${r},${r} 0 0 1 -${r},-${r} v-${h - 2 * r} a${r},${r} 0 0 1 ${r},-${r} Z`
@@ -409,16 +414,18 @@ export interface NetworkGraphGroupProps
   groupId: string
   nodes: NetworkGraphNode[]
   positions: Record<string, { x: number; y: number }>
+  /** Width of node cards in px. Default: NODE_W (148) */
+  nodeWidth?: number
 }
 
-function NetworkGraphGroup({ groupId, nodes, positions, className, ...props }: NetworkGraphGroupProps) {
+function NetworkGraphGroup({ groupId, nodes, positions, nodeWidth = NODE_W, className, ...props }: NetworkGraphGroupProps) {
   const pts = nodes
     .filter((n) => positions[n.id])
     .map((n) => positions[n.id])
   if (pts.length === 0) return null
 
   const hull = pts.length >= 3 ? convexHull(pts) : pts
-  const pathD = hullPath(hull, 32)
+  const pathD = hullPath(hull, 32, nodeWidth)
   const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
   const cy = Math.min(...pts.map((p) => p.y)) - NODE_H / 2 - 24
 
@@ -691,6 +698,8 @@ export interface NetworkGraphProps extends React.ComponentProps<"div"> {
   exportable?: boolean
   /** When false, all edges are drawn without arrowheads (undirected). Per-edge `directed` overrides this. Default: true */
   directed?: boolean
+  /** Width of node cards in px. Default: 148 */
+  nodeWidth?: number
 }
 
 function NetworkGraph({
@@ -706,6 +715,7 @@ function NetworkGraph({
   minimap: showMinimap = false,
   exportable = false,
   directed: globalDirected = true,
+  nodeWidth = NODE_W,
   className,
   ...props
 }: NetworkGraphProps) {
@@ -758,9 +768,9 @@ function NetworkGraph({
       const pad = 40
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
       for (const p of pts) {
-        minX = Math.min(minX, p.x - NODE_W / 2)
+        minX = Math.min(minX, p.x - nodeWidth / 2)
         minY = Math.min(minY, p.y - NODE_H / 2)
-        maxX = Math.max(maxX, p.x + NODE_W / 2)
+        maxX = Math.max(maxX, p.x + nodeWidth / 2)
         maxY = Math.max(maxY, p.y + NODE_H / 2)
       }
       const bw = maxX - minX + pad * 2
@@ -771,7 +781,7 @@ function NetworkGraph({
         x: (width - (minX + maxX) * s) / 2,
         y: (height - (minY + maxY) * s) / 2,
       })
-    }, [positions, width, height])
+    }, [positions, width, height, nodeWidth])
 
     // ── Layout / Force simulation ────────────────────────────────────────────
     const hasFitted = React.useRef(false)
@@ -1175,6 +1185,7 @@ function NetworkGraph({
                     groupId={gid}
                     nodes={nodes.filter((n) => n.group === gid)}
                     positions={positions}
+                    nodeWidth={nodeWidth}
                   />
                 ))}
               </g>
@@ -1194,6 +1205,7 @@ function NetworkGraph({
                     highlighted={hiEdgeKeys.has(
                       getEdgeKey(e.source, e.target)
                     )}
+                    nodeWidth={nodeWidth}
                     style={{ opacity: edgeMatch ? undefined : 0.15 }}
                   />
                 )
@@ -1207,7 +1219,7 @@ function NetworkGraph({
                 const s = positions[e.source]
                 const t = positions[e.target]
                 if (!s || !t) return null
-                const nodeBounds = { width: NODE_W, height: NODE_H }
+                const nodeBounds = { width: nodeWidth, height: NODE_H }
                 const exit = getNodeExitPoint(s, t, nodeBounds)
                 const entry = getNodeExitPoint(t, s, nodeBounds)
                 const mx = (exit.x + entry.x) / 2
@@ -1244,6 +1256,7 @@ function NetworkGraph({
                     interactive={interactive && nodeMatch}
                     onNodePointerDown={onNodePointerDown}
                     onNodeSelect={select}
+                    nodeWidth={nodeWidth}
                     style={
                       nodeMatch
                         ? undefined
