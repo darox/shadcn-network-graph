@@ -65,6 +65,10 @@ export interface NetworkGraphEdge {
   animated?: boolean
   /** When false, hides the arrowhead and draws an undirected line. Default: true */
   directed?: boolean
+  /** Native tooltip shown on hover (SVG <title>). Use instead of label for cleaner visuals. */
+  tooltip?: string
+  /** Custom stroke color for this edge (CSS color string, e.g. "hsl(142 71% 45%)" or "var(--green-500)") */
+  stroke?: string
 }
 
 // ─── Internal constants ────────────────────────────────────────────────────────
@@ -266,27 +270,40 @@ function NetworkGraphEdgeLine({ edge, positions, highlighted = false, nodeWidth 
   const y2 = entry.y + uy * arrowOff
 
   return (
-    <line
-      data-slot="network-graph-edge"
-      data-highlighted={highlighted || undefined}
-      className={cn(
-        "stroke-border transition-[stroke,stroke-width] duration-150",
-        highlighted && "stroke-muted-foreground",
-        edge.animated && "ng-animated-edge",
-        className
+    <g data-slot="network-graph-edge-group">
+      <line
+        data-slot="network-graph-edge"
+        data-highlighted={highlighted || undefined}
+        className={cn(
+          !edge.stroke && "stroke-border",
+          "transition-[stroke,stroke-width] duration-150",
+          !edge.stroke && highlighted && "stroke-muted-foreground",
+          edge.animated && "ng-animated-edge",
+          className
+        )}
+        stroke={edge.stroke ?? undefined}
+        strokeWidth={highlighted ? 2 : 1.5}
+        x1={exit.x}
+        y1={exit.y}
+        x2={x2}
+        y2={y2}
+        markerEnd={
+          edge.directed === false
+            ? undefined
+            : highlighted ? "url(#ng-arrow-hi)" : "url(#ng-arrow)"
+        }
+        {...props}
+      />
+      {edge.tooltip && (
+        <line
+          x1={exit.x} y1={exit.y} x2={x2} y2={y2}
+          stroke="transparent" strokeWidth={12}
+          style={{ cursor: "default" }}
+        >
+          <title>{edge.tooltip}</title>
+        </line>
       )}
-      strokeWidth={highlighted ? 2 : 1.5}
-      x1={exit.x}
-      y1={exit.y}
-      x2={x2}
-      y2={y2}
-      markerEnd={
-        edge.directed === false
-          ? undefined
-          : highlighted ? "url(#ng-arrow-hi)" : "url(#ng-arrow)"
-      }
-      {...props}
-    />
+    </g>
   )
 }
 
