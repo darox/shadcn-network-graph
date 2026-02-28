@@ -1,0 +1,37 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "shadcn-network-graph",
+  "homepage": "https://github.com/dario/shadcn-network-graph",
+  "items": [
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "network-graph",
+      "type": "registry:ui",
+      "title": "Network Graph",
+      "description": "A force-directed network graph component. Supports pan, zoom, drag, node selection, search, minimap, export, tree/radial layouts, and automatic theming via shadcn CSS variables.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "button"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/network-graph.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/network-graph.tsx"
+        },
+        {
+          "path": "registry/ui/simulation.ts",
+          "type": "registry:lib",
+          "target": "components/ui/network-graph-simulation.ts"
+        },
+        {
+          "path": "registry/ui/network-graph-layouts.ts",
+          "type": "registry:lib",
+          "target": "components/ui/network-graph-layouts.ts"
+        }
+      ]
+    }
+  ]
+}
