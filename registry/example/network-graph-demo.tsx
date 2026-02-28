@@ -21,25 +21,26 @@ const edges = [
 
 function useContainerSize() {
   const ref = React.useRef<HTMLDivElement>(null)
-  const [w, setW] = React.useState(800)
+  const [size, setSize] = React.useState({ width: 800, height: 500 })
   React.useEffect(() => {
     const el = ref.current
     if (!el) return
     const ro = new ResizeObserver(([entry]) => {
-      setW(Math.round(entry.contentRect.width))
+      const w = Math.round(entry.contentRect.width)
+      const h = Math.round(entry.contentRect.height)
+      setSize({ width: w, height: h > 0 ? h : Math.round(w * 9 / 16) })
     })
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  return { ref, width: w }
+  return { ref, ...size }
 }
 
 export default function NetworkGraphDemo() {
-  const { ref, width } = useContainerSize()
-  const height = Math.round(width * (9 / 16))
+  const { ref, width, height } = useContainerSize()
 
   return (
-    <div ref={ref} className="w-full">
+    <div ref={ref} className="h-full w-full">
       <NetworkGraph
         nodes={nodes}
         edges={edges}

@@ -19,27 +19,28 @@ const edges = [
   { source: "app2",   target: "db",   label: "pg" },
 ]
 
-function useContainerWidth(maxWidth: number) {
+function useContainerSize() {
   const ref = React.useRef<HTMLDivElement>(null)
-  const [w, setW] = React.useState(maxWidth)
+  const [size, setSize] = React.useState({ width: 600, height: 360 })
   React.useEffect(() => {
     const el = ref.current
     if (!el) return
     const ro = new ResizeObserver(([entry]) => {
-      setW(Math.min(entry.contentRect.width, maxWidth))
+      const w = Math.round(entry.contentRect.width)
+      const h = Math.round(entry.contentRect.height)
+      setSize({ width: w, height: h > 0 ? h : Math.round(w * 360 / 600) })
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [maxWidth])
-  return { ref, width: w }
+  }, [])
+  return { ref, ...size }
 }
 
 export default function NetworkGraphReadOnlyDemo() {
-  const { ref, width } = useContainerWidth(600)
-  const height = Math.round(width * (360 / 600))
+  const { ref, width, height } = useContainerSize()
 
   return (
-    <div ref={ref} className="w-full max-w-[600px]">
+    <div ref={ref} className="h-full w-full sm:max-w-[600px]">
       <NetworkGraph
         nodes={nodes}
         edges={edges}

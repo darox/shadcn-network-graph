@@ -3,8 +3,8 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 
 export default function ReadOnlyPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="relative w-full">
+    <div className="flex h-dvh flex-col items-center sm:justify-center sm:p-8">
+      <div className="relative h-full w-full sm:h-auto">
         <NetworkGraphReadOnlyDemo />
         <div className="absolute bottom-3 right-3 z-10">
           <ThemeSwitcher />

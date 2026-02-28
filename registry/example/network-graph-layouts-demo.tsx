@@ -26,29 +26,30 @@ const edges = [
   { source: "c",    target: "c2" },
 ]
 
-function useContainerWidth(maxWidth: number) {
+function useContainerSize() {
   const ref = React.useRef<HTMLDivElement>(null)
-  const [w, setW] = React.useState(maxWidth)
+  const [size, setSize] = React.useState({ width: 900, height: 500 })
   React.useEffect(() => {
     const el = ref.current
     if (!el) return
     const ro = new ResizeObserver(([entry]) => {
-      setW(Math.min(entry.contentRect.width, maxWidth))
+      const w = Math.round(entry.contentRect.width)
+      const h = Math.round(entry.contentRect.height)
+      setSize({ width: w, height: h > 0 ? h : Math.round(w * 500 / 900) })
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [maxWidth])
-  return { ref, width: w }
+  }, [])
+  return { ref, ...size }
 }
 
 export default function NetworkGraphLayoutsDemo() {
   const [layout, setLayout] = React.useState<"force" | "tree" | "radial">("tree")
-  const { ref, width } = useContainerWidth(900)
-  const height = Math.round(width * (500 / 900))
+  const { ref, width, height } = useContainerSize()
 
   return (
-    <div className="flex w-full max-w-[900px] flex-col items-center gap-4">
-      <div className="flex gap-2">
+    <div className="flex h-full w-full flex-col items-center gap-4 sm:max-w-[900px]">
+      <div className="flex gap-2 py-2 sm:py-0">
         {(["force", "tree", "radial"] as const).map((l) => (
           <button
             key={l}
@@ -63,7 +64,7 @@ export default function NetworkGraphLayoutsDemo() {
           </button>
         ))}
       </div>
-      <div ref={ref} className="w-full">
+      <div ref={ref} className="h-full w-full min-h-0 flex-1">
         <NetworkGraph
           nodes={nodes}
           edges={edges}

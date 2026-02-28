@@ -30,27 +30,28 @@ const edges = [
   { source: "ap",       target: "phone",     label: "Wi-Fi 6" },
 ]
 
-function useContainerWidth(maxWidth: number) {
+function useContainerSize() {
   const ref = React.useRef<HTMLDivElement>(null)
-  const [w, setW] = React.useState(maxWidth)
+  const [size, setSize] = React.useState({ width: 900, height: 600 })
   React.useEffect(() => {
     const el = ref.current
     if (!el) return
     const ro = new ResizeObserver(([entry]) => {
-      setW(Math.min(entry.contentRect.width, maxWidth))
+      const w = Math.round(entry.contentRect.width)
+      const h = Math.round(entry.contentRect.height)
+      setSize({ width: w, height: h > 0 ? h : Math.round(w * 600 / 900) })
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [maxWidth])
-  return { ref, width: w }
+  }, [])
+  return { ref, ...size }
 }
 
 export default function NetworkGraphLanDemo() {
-  const { ref, width } = useContainerWidth(900)
-  const height = Math.round(width * (600 / 900))
+  const { ref, width, height } = useContainerSize()
 
   return (
-    <div ref={ref} className="w-full max-w-[900px]">
+    <div ref={ref} className="h-full w-full sm:max-w-[900px]">
       <NetworkGraph
         nodes={nodes}
         edges={edges}
