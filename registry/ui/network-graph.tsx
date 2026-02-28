@@ -63,6 +63,8 @@ export interface NetworkGraphEdge {
   label?: string
   /** When true, shows a marching-ants animation on the edge */
   animated?: boolean
+  /** When false, hides the arrowhead and draws an undirected line. Default: true */
+  directed?: boolean
 }
 
 // ─── Internal constants ────────────────────────────────────────────────────────
@@ -254,8 +256,9 @@ function NetworkGraphEdgeLine({ edge, positions, highlighted = false, className,
   const ux = dx / dist
   const uy = dy / dist
   const entry = getNodeExitPoint(t, s, nodeBounds)
-  const x2 = entry.x + ux * ARROW_OFFSET
-  const y2 = entry.y + uy * ARROW_OFFSET
+  const arrowOff = edge.directed === false ? 0 : ARROW_OFFSET
+  const x2 = entry.x + ux * arrowOff
+  const y2 = entry.y + uy * arrowOff
 
   return (
     <line
@@ -273,7 +276,9 @@ function NetworkGraphEdgeLine({ edge, positions, highlighted = false, className,
       x2={x2}
       y2={y2}
       markerEnd={
-        highlighted ? "url(#ng-arrow-hi)" : "url(#ng-arrow)"
+        edge.directed === false
+          ? undefined
+          : highlighted ? "url(#ng-arrow-hi)" : "url(#ng-arrow)"
       }
       {...props}
     />
@@ -684,6 +689,8 @@ export interface NetworkGraphProps extends React.ComponentProps<"div"> {
   minimap?: boolean
   /** Show export PNG/SVG buttons. Default: false */
   exportable?: boolean
+  /** When false, all edges are drawn without arrowheads (undirected). Per-edge `directed` overrides this. Default: true */
+  directed?: boolean
 }
 
 function NetworkGraph({
@@ -698,6 +705,7 @@ function NetworkGraph({
   searchable = false,
   minimap: showMinimap = false,
   exportable = false,
+  directed: globalDirected = true,
   className,
   ...props
 }: NetworkGraphProps) {
@@ -1177,10 +1185,11 @@ function NetworkGraph({
               {edges.map((e) => {
                 const edgeMatch =
                   matchedIds.has(e.source) || matchedIds.has(e.target)
+                const resolvedEdge = e.directed === undefined ? { ...e, directed: globalDirected } : e
                 return (
                   <NetworkGraphEdgeLine
                     key={getEdgeKey(e.source, e.target)}
-                    edge={e}
+                    edge={resolvedEdge}
                     positions={positions}
                     highlighted={hiEdgeKeys.has(
                       getEdgeKey(e.source, e.target)
